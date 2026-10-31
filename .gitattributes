@@ -1,5 +1,8 @@
 # 텍스트는 저장소에 LF 로 저장 (Windows 체크아웃 시 CRLF)
 * text=auto
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
 
 # 언리얼 바이너리 에셋 → Git LFS
 *.uasset filter=lfs diff=lfs merge=lfs -text

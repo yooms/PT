@@ -1,4 +1,4 @@
-// Copyright NeedsGames. All Rights Reserved.
+// Copyright yoomsGames. All Rights Reserved.
 
 #include "Traversal/PTTraversalTypes.h"
 #include "Animation/AnimMontage.h"

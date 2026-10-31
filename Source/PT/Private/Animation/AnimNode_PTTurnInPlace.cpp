@@ -1,4 +1,4 @@
-// Copyright NeedsGames. All Rights Reserved.
+// Copyright yoomsGames. All Rights Reserved.
 
 #include "Animation/AnimNode_PTTurnInPlace.h"
 #include "Animation/AnimInstanceProxy.h"
@@ -182,16 +182,20 @@ bool FAnimNode_PTTurnInPlace::EvaluateLeg(int32 LegIndex, const FPTTurnInPlaceLe
 
 	const int32 FootId = LegIndex + 1;
 
-	// 디딘 발이 있어야 할 위치에서 너무 멀어졌으면(보폭이 벌어진 채 고정 등) 복구 스텝 시작
-	if (StepFoot == 0 && RecoveryFoot == 0 && !State.bStepping
+	// 디딘 발이 있어야 할 위치에서 너무 멀어졌으면(보폭이 벌어진 채 고정, 축에서 먼 발이 끌려감 등) 복구 스텝 시작.
+	// 다른 발이 스텝 중이어도 후반부(OverlapStepStart 이후)면 겹쳐서 시작 → 앞발이 늦게 따라와 다리가 펴지지 않게
+	const bool bOtherFootStepping = (StepFoot != 0 && StepFoot != FootId);
+	const bool bCanOverlap = !bOtherFootStepping || StepAlpha >= OverlapStepStart;
+	if (StepFoot != FootId && RecoveryFoot == 0 && !State.bStepping && bCanOverlap
 		&& FVector::DistSquaredXY(State.PlantedLocation, AnimFootWorld) > FMath::Square(MaxPlantedDrift))
 	{
 		RecoveryFoot = FootId;
 		RecoveryAlpha = 0.f;
 	}
 
-	const bool bDrivenStep = (StepFoot == FootId);
-	const bool bRecoveryStep = !bDrivenStep && StepFoot == 0 && RecoveryFoot == FootId;
+	// 복구 스텝이 진행 중이면 끝까지 마친 뒤에 지시 스텝을 처리 (도중에 새로 발을 들면 두 번 들썩임)
+	const bool bRecoveryStep = (RecoveryFoot == FootId);
+	const bool bDrivenStep = (StepFoot == FootId) && !bRecoveryStep;
 
 	FVector TargetWorld;
 	float TargetMeshYaw;
@@ -202,58 +206,70 @@ bool FAnimNode_PTTurnInPlace::EvaluateLeg(int32 LegIndex, const FPTTurnInPlaceLe
 		if (!State.bStepping)
 		{
 			State.bStepping = true;
+			State.bRecoveryStepping = true;
 			State.StepStartLocation = State.PlantedLocation;
 			State.StepStartMeshYaw = State.DisplayMeshYaw;
 		}
 
-		// 현재 몸 아래, 애니메이션상의 발 위치로 이동
+		// 몸이 회전을 마쳤을 때 발이 있어야 할 위치로 한 번에 이동 (현재 위치로 옮기면 몸이 더 돌아 또 스텝하게 됨)
+		const FVector RecoveryEnd = ComponentTransform.TransformPosition((FootOriginal * EndRootRotation).GetLocation());
 		const FVector UpWorld = ComponentTransform.TransformVectorNoScale(UpCS);
 		const float A = FMath::Clamp(RecoveryAlpha, 0.f, 1.f);
 		StepPhase = A;
 		const float Eased = FMath::SmoothStep(0.f, 1.f, A);
 
-		TargetWorld = FMath::Lerp(State.StepStartLocation, AnimFootWorld, Eased) + UpWorld * (StepHeight * FMath::Sin(UE_PI * A));
-		TargetMeshYaw = State.StepStartMeshYaw + FMath::FindDeltaAngleDegrees(State.StepStartMeshYaw, MeshYaw) * Eased;
+		TargetWorld = FMath::Lerp(State.StepStartLocation, RecoveryEnd, Eased) + UpWorld * (StepHeight * FMath::Sin(UE_PI * A));
+		TargetMeshYaw = State.StepStartMeshYaw + FMath::FindDeltaAngleDegrees(State.StepStartMeshYaw, EndMeshYaw) * Eased;
 
-		State.LastStepTarget = AnimFootWorld;
-		State.LastStepTargetYaw = MeshYaw;
+		State.LastStepTarget = RecoveryEnd;
+		State.LastStepTargetYaw = EndMeshYaw;
 
 		if (A >= 1.f)
 		{
 			State.bStepping = false;
-			State.PlantedLocation = AnimFootWorld;
-			State.PlantedMeshYaw = MeshYaw;
+			State.bRecoveryStepping = false;
+			State.PlantedLocation = RecoveryEnd;
+			State.PlantedMeshYaw = EndMeshYaw;
 			RecoveryFoot = 0;
 			RecoveryAlpha = 0.f;
 		}
 	}
 	else if (bDrivenStep)
 	{
-		if (RecoveryFoot == FootId)
-		{
-			// 애님 인스턴스가 지시한 스텝이 우선
-			RecoveryFoot = 0;
-			RecoveryAlpha = 0.f;
-		}
+		// 스텝 종료 시 애니메이션상 발이 있어야 할 위치
+		const FVector EndWorld = ComponentTransform.TransformPosition((FootOriginal * EndRootRotation).GetLocation());
+
 		if (!State.bStepping)
 		{
 			State.bStepping = true;
 			State.StepStartLocation = State.PlantedLocation;
 			State.StepStartMeshYaw = State.DisplayMeshYaw;
+			State.DrivenPhaseStart = FMath::Clamp(StepAlpha, 0.f, 0.95f);
+			// 이미 목표 근처(복구 스텝으로 먼저 옮겨진 경우 등)거나 지시 스텝 대부분이 지나간 뒤라면 발을 다시 들지 않음
+			State.bSkipDrivenStep = FVector::DistXY(State.PlantedLocation, EndWorld) < MinStepDistance || StepAlpha >= 0.8f;
 		}
 
-		// 스텝 종료 시 애니메이션상 발이 있어야 할 위치
-		const FVector EndWorld = ComponentTransform.TransformPosition((FootOriginal * EndRootRotation).GetLocation());
-		const FVector UpWorld = ComponentTransform.TransformVectorNoScale(UpCS);
-		const float A = FMath::Clamp(StepAlpha, 0.f, 1.f);
-		StepPhase = A;
-		const float Eased = FMath::SmoothStep(0.f, 1.f, A);
+		if (State.bSkipDrivenStep)
+		{
+			TargetWorld = State.PlantedLocation;
+			TargetMeshYaw = State.PlantedMeshYaw + FMath::FindDeltaAngleDegrees(State.PlantedMeshYaw, MeshYaw) * PlantedFootSwivel;
+			State.LastStepTarget = State.PlantedLocation;
+			State.LastStepTargetYaw = State.PlantedMeshYaw;
+		}
+		else
+		{
+			// 늦게 시작한 스텝은 남은 구간을 0~1 로 다시 매핑 (시작하자마자 발이 튀지 않게)
+			const float A = FMath::Clamp((StepAlpha - State.DrivenPhaseStart) / FMath::Max(1.f - State.DrivenPhaseStart, KINDA_SMALL_NUMBER), 0.f, 1.f);
+			StepPhase = A;
+			const float Eased = FMath::SmoothStep(0.f, 1.f, A);
+			const FVector UpWorld = ComponentTransform.TransformVectorNoScale(UpCS);
 
-		TargetWorld = FMath::Lerp(State.StepStartLocation, EndWorld, Eased) + UpWorld * (StepHeight * FMath::Sin(UE_PI * A));
-		TargetMeshYaw = State.StepStartMeshYaw + FMath::FindDeltaAngleDegrees(State.StepStartMeshYaw, EndMeshYaw) * Eased;
+			TargetWorld = FMath::Lerp(State.StepStartLocation, EndWorld, Eased) + UpWorld * (StepHeight * FMath::Sin(UE_PI * A));
+			TargetMeshYaw = State.StepStartMeshYaw + FMath::FindDeltaAngleDegrees(State.StepStartMeshYaw, EndMeshYaw) * Eased;
 
-		State.LastStepTarget = EndWorld;
-		State.LastStepTargetYaw = EndMeshYaw;
+			State.LastStepTarget = EndWorld;
+			State.LastStepTargetYaw = EndMeshYaw;
+		}
 	}
 	else
 	{
@@ -266,6 +282,7 @@ bool FAnimNode_PTTurnInPlace::EvaluateLeg(int32 LegIndex, const FPTTurnInPlaceLe
 				RecoveryAlpha = 0.f;
 			}
 			State.bStepping = false;
+			State.bRecoveryStepping = false;
 			State.PlantedLocation = State.LastStepTarget;
 			State.PlantedMeshYaw = State.LastStepTargetYaw;
 		}
@@ -276,6 +293,7 @@ bool FAnimNode_PTTurnInPlace::EvaluateLeg(int32 LegIndex, const FPTTurnInPlaceLe
 
 	// 고정된 발은 월드 방향 유지 (몸이 돌아도 발끝이 같이 돌지 않게)
 	State.DisplayMeshYaw = TargetMeshYaw;
+	State.DisplayLocation = TargetWorld;
 
 	const float YawFix = FMath::FindDeltaAngleDegrees(MeshYaw, TargetMeshYaw);
 	FQuat TargetFootRotation = FQuat(UpCS, FMath::DegreesToRadians(YawFix)) * FootAnim.GetRotation();
@@ -320,6 +338,20 @@ bool FAnimNode_PTTurnInPlace::EvaluateLeg(int32 LegIndex, const FPTTurnInPlaceLe
 	// 무릎이 몸과 발 방향의 중간을 향하게 해 정강이-발목 비틀림 완화
 	KneeDirection = FQuat(UpCS, FMath::DegreesToRadians(YawFix * KneeFollowFoot * Lock)).RotateVector(KneeDirection);
 	const FVector JointTarget = Calf.GetLocation() + KneeDirection.GetSafeNormal() * KneePoleDistance;
+
+	// 다리 최대 길이 제한: 고정된 발이 멀어져도 무릎이 쭉 펴지지 않도록 목표를 엉덩이 쪽으로 당김
+	{
+		const FVector Hip = Thigh.GetLocation();
+		const float LegLength = FVector::Dist(Hip, Calf.GetLocation()) + FVector::Dist(Calf.GetLocation(), Foot.GetLocation());
+		const float AnimReach = FVector::Dist(Hip, Foot.GetLocation()); // 원래 애니메이션 자세는 그대로 허용
+		const float MaxReach = FMath::Max(LegLength * MaxLegExtension, AnimReach);
+		const FVector HipToTarget = TargetCS - Hip;
+		const float Reach = HipToTarget.Size();
+		if (Reach > MaxReach && Reach > KINDA_SMALL_NUMBER)
+		{
+			TargetCS = Hip + HipToTarget * (MaxReach / Reach);
+		}
+	}
 
 	AnimationCore::SolveTwoBoneIK(Thigh, Calf, Foot, JointTarget, TargetCS, false, 1.0, 1.0);
 	Foot.SetRotation(TargetFootRotation);

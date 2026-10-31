@@ -1,8 +1,9 @@
-// Copyright NeedsGames. All Rights Reserved.
+// Copyright yoomsGames. All Rights Reserved.
 
 #pragma once
 
 #include "Animation/AnimInstance.h"
+#include "Engine/EngineTypes.h"
 #include "Animation/AnimExecutionContext.h"
 #include "Animation/AnimNodeReference.h"
 #include "Animation/TrajectoryTypes.h"
@@ -120,6 +121,8 @@ protected:
 	void UpdateBodyLean(float DeltaSeconds);
 	/** 게임 스레드: 전력질주 애니 속도 / 정지 슬라이드 애니메이션 */
 	void UpdateSprintPresentation(float DeltaSeconds);
+	/** 게임 스레드: 발 아래 바닥 트레이스 → PT Foot IK 노드 입력 */
+	void UpdateFootIK(float DeltaSeconds);
 
 public:
 	// ---------------- 설정 ----------------
@@ -308,6 +311,57 @@ public:
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "PT|Lean")
 	float BodyLeanPitch = 0.f;
 
+	// ---------------- 발 IK (PT Foot IK 노드) ----------------
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "PT|FootIK")
+	bool bEnableFootIK = true;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "PT|FootIK")
+	TEnumAsByte<ECollisionChannel> FootIKTraceChannel = ECC_Visibility;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "PT|FootIK")
+	FName FootIKLeftBone = TEXT("foot_l");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "PT|FootIK")
+	FName FootIKRightBone = TEXT("foot_r");
+
+	/** 캡슐 바닥 기준 위/아래로 바닥을 찾는 거리 (cm) */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "PT|FootIK", meta = (ClampMin = "0"))
+	float FootIKTraceUp = 50.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "PT|FootIK", meta = (ClampMin = "0"))
+	float FootIKTraceDown = 60.f;
+
+	/** 골반을 내릴 수 있는 최대 거리 / 발을 올릴 수 있는 최대 높이 (cm) */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "PT|FootIK", meta = (ClampMin = "0"))
+	float FootIKMaxPelvisDrop = 40.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "PT|FootIK", meta = (ClampMin = "0"))
+	float FootIKMaxFootRaise = 45.f;
+
+	/** 발 / 골반 높이 변화 스무딩 시간 (초) */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "PT|FootIK", meta = (ClampMin = "0"))
+	float FootIKSmoothingTime = 0.06f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "PT|FootIK", meta = (ClampMin = "0"))
+	float FootIKPelvisSmoothingTime = 0.1f;
+
+	/** PT Foot IK 노드 핀에 연결 */
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "PT|FootIK")
+	float FootIKLeftOffset = 0.f;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "PT|FootIK")
+	float FootIKRightOffset = 0.f;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "PT|FootIK")
+	float FootIKPelvisOffset = 0.f;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "PT|FootIK")
+	FVector FootIKLeftNormal = FVector::UpVector;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "PT|FootIK")
+	FVector FootIKRightNormal = FVector::UpVector;
+
 	// ---------------- 전력질주 / 정지 슬라이드 표현 ----------------
 
 	/**
@@ -402,6 +456,11 @@ protected:
 	float FromTraversalTimer = 0.f;
 	bool bWasTraversing = false;
 	FVector LastAirVelocity = FVector::ZeroVector;
+
+	// 발 IK 스무딩 상태
+	float FootIKLeftRate = 0.f;
+	float FootIKRightRate = 0.f;
+	float FootIKPelvisRate = 0.f;
 
 	// 에임 / 기울기 스무딩 상태
 	float AimYawRaw = 0.f;

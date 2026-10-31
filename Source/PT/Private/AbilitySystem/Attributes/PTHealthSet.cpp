@@ -1,4 +1,4 @@
-// Copyright NeedsGames. All Rights Reserved.
+// Copyright yoomsGames. All Rights Reserved.
 
 #include "AbilitySystem/Attributes/PTHealthSet.h"
 #include "AbilitySystemBlueprintLibrary.h"

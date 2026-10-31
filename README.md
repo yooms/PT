@@ -9,6 +9,7 @@
 | 파쿠르 (Hurdle/Vault/Mantle, GAS 어빌리티) | `Traversal`, `AbilitySystem/Abilities/PTGameplayAbility_Traversal` | [Docs/Traversal.md](Docs/Traversal.md) |
 | 전력질주 / 정지 슬라이드 | `Character/PTCharacterMovementComponent`, `Animation/PTMotionMatchingAnimInstance` | [Docs/Sprint.md](Docs/Sprint.md) |
 | GASP 연동 (모션 매칭 로코모션 + 파쿠르 몽타주) | `PTEditor/PTGASPSetup` (`pt.Editor.SetupGASP`) | [Docs/GASP.md](Docs/GASP.md) |
+| 발 IK (경사면 / 계단) | `Animation/AnimNode_PTFootIK`, `PTMotionMatchingAnimInstance::UpdateFootIK` | [Docs/FootIK.md](Docs/FootIK.md) |
 | C++ 절차적 제자리 회전 | `CharacterMovement`, `Animation/AnimNode_PTTurnInPlace` | [Docs/TurnInPlace.md](Docs/TurnInPlace.md) |
 | C++ 절차적 에임 오프셋 | `Animation/AnimNode_PTAimOffset`, `Source/PTEditor` | [Docs/AimOffset.md](Docs/AimOffset.md) |
 | 리슨 서버 세션 + 호스트 인계 | `Online`, `Core` | [Docs/HostMigration.md](Docs/HostMigration.md) |
@@ -73,3 +74,7 @@ Source/PTEditor           에디터 전용(UncookedOnly): PT Aim Offset 애님 �
 - [ ] `DA_LocomotionDatabases`(PTLocomotionDatabaseSet) 규칙 작성
 - [ ] 메인 메뉴 맵 / UI (Host·Find·Join 은 `PTSessionSubsystem` BP 노드 사용) → `DefaultEngine.ini` 의 `GameDefaultMap` 교체
 - [ ] 패키징 전 PSO 캐시 수집 → `Docs/ShaderWarmup.md`
+
+## GitHub 업로드
+
+`GitPush.bat` 더블클릭 (또는 `GitPush.bat 커밋 메시지`) → 변경 사항 커밋 후 https://github.com/yooms/PT 로 푸시. 에셋은 Git LFS. 푸시가 거부되면 합치기/덮어쓰기 중 선택.

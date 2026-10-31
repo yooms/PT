@@ -1,4 +1,4 @@
-// Copyright NeedsGames. All Rights Reserved.
+// Copyright yoomsGames. All Rights Reserved.
 
 #include "Shader/PTShaderWarmupSubsystem.h"
 #include "Shader/PTShaderWarmupSettings.h"

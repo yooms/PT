@@ -1,4 +1,4 @@
-// Copyright NeedsGames. All Rights Reserved.
+// Copyright yoomsGames. All Rights Reserved.
 
 #include "AbilitySystem/Abilities/PTGameplayAbility_Traversal.h"
 #include "Character/PTCharacter.h"
@@ -78,6 +78,12 @@ void UPTGameplayAbility_Traversal::ActivateAbility(const FGameplayAbilitySpecHan
 	}
 
 	ActiveResult = Data->Result;
+
+	// 카메라가 장애물/몸 안으로 파묻히지 않도록 (로컬 플레이어만)
+	if (Character->IsLocallyControlled())
+	{
+		Character->SetTraversalCameraMode(true);
+	}
 
 	// 이동: 루트 모션이 위아래로 움직일 수 있도록 Flying, 장애물과의 충돌 무시
 	if (UPTCharacterMovementComponent* MoveComp = Character->GetPTMovementComponent())
@@ -266,6 +272,10 @@ void UPTGameplayAbility_Traversal::OnMontageCancelled()
 void UPTGameplayAbility_Traversal::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
 	RestoreMovement();
+	if (APTCharacter* Character = GetPTCharacterFromActorInfo())
+	{
+		Character->SetTraversalCameraMode(false);
+	}
 	ActiveResult = FPTTraversalCheckResult();
 	ProceduralSegments.Reset();
 	ProceduralSegmentIndex = INDEX_NONE;

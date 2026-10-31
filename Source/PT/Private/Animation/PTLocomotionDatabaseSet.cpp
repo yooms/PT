@@ -1,4 +1,4 @@
-// Copyright NeedsGames. All Rights Reserved.
+// Copyright yoomsGames. All Rights Reserved.
 
 #include "Animation/PTLocomotionDatabaseSet.h"
 #include "PoseSearch/PoseSearchDatabase.h"

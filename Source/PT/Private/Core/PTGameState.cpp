@@ -1,4 +1,4 @@
-// Copyright NeedsGames. All Rights Reserved.
+// Copyright yoomsGames. All Rights Reserved.
 
 #include "Core/PTGameState.h"
 #include "Online/PTHostMigrationSubsystem.h"

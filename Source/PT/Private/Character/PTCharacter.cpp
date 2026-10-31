@@ -1,4 +1,4 @@
-// Copyright NeedsGames. All Rights Reserved.
+// Copyright yoomsGames. All Rights Reserved.
 
 #include "Character/PTCharacter.h"
 #include "Character/PTCharacterMovementComponent.h"
@@ -135,6 +135,31 @@ void APTCharacter::BeginPlay()
 			GetCapsuleComponent()->SetHiddenInGame(false);
 			UE_LOG(LogPT, Warning, TEXT("%s has no skeletal mesh - showing capsule. Create a BP child of PTCharacter and assign a mesh/AnimBP."), *GetName());
 		}
+	}
+}
+
+void APTCharacter::SetTraversalCameraMode(bool bTraversing)
+{
+	if (!CameraBoom || bTraversing == bTraversalCameraActive)
+	{
+		return;
+	}
+	bTraversalCameraActive = bTraversing;
+
+	if (bTraversing)
+	{
+		bSavedCameraCollisionTest = CameraBoom->bDoCollisionTest;
+		SavedCameraLagSpeed = CameraBoom->CameraLagSpeed;
+		CameraBoom->bDoCollisionTest = false;
+		if (CameraBoom->bEnableCameraLag && TraversalCameraLagSpeed > 0.f)
+		{
+			CameraBoom->CameraLagSpeed = TraversalCameraLagSpeed;
+		}
+	}
+	else
+	{
+		CameraBoom->bDoCollisionTest = bSavedCameraCollisionTest;
+		CameraBoom->CameraLagSpeed = SavedCameraLagSpeed;
 	}
 }
 

@@ -1,4 +1,4 @@
-// Copyright NeedsGames. All Rights Reserved.
+// Copyright yoomsGames. All Rights Reserved.
 
 #pragma once
 
@@ -89,7 +89,25 @@ struct PT_API FAnimNode_PTTurnInPlace : public FAnimNode_SkeletalControlBase
 	 * 멈춤/착지 직후 보폭이 벌어진 상태로 고정되어 다리가 꼬이는 것을 방지
 	 */
 	UPROPERTY(EditAnywhere, Category = "Settings", meta = (ClampMin = "1"))
-	float MaxPlantedDrift = 20.f;
+	float MaxPlantedDrift = 12.f;
+
+	/**
+	 * 고정된 발까지 다리를 최대 이 비율(허벅지+정강이 길이 대비)까지만 펴고, 그 이상 멀어지면 발이 살짝 끌려옴.
+	 * 몸이 도는 동안 축에서 먼 발(앞발)이 늦게 따라와 무릎이 쭉 펴지는 것을 방지
+	 */
+	UPROPERTY(EditAnywhere, Category = "Settings", meta = (ClampMin = "0.8", ClampMax = "1"))
+	float MaxLegExtension = 0.96f;
+
+	/** 다른 발이 스텝 중일 때 이 진행도(0~1) 이후부터는 이 발도 복구 스텝을 겹쳐서 시작할 수 있음 (자연스러운 발 교차) */
+	UPROPERTY(EditAnywhere, Category = "Settings", meta = (ClampMin = "0", ClampMax = "1"))
+	float OverlapStepStart = 0.45f;
+
+	/**
+	 * 발이 이미 목표 근처(이 거리 이내, cm)에 있으면 지시된 스텝을 생략 (발을 다시 들지 않음).
+	 * 복구 스텝 직후 같은 발에 스텝이 또 지시되어 발을 두 번 들썩이는(탭댄스) 현상 방지
+	 */
+	UPROPERTY(EditAnywhere, Category = "Settings", meta = (ClampMin = "0"))
+	float MinStepDistance = 6.f;
 
 	/** 복구 스텝 시간 (초) */
 	UPROPERTY(EditAnywhere, Category = "Settings", meta = (ClampMin = "0.05"))
@@ -147,6 +165,13 @@ private:
 		float LastStepTargetYaw = 0.f;
 		/** 실제로 표시 중인 발 Yaw (고정 중 살짝 비튼 값 포함) */
 		float DisplayMeshYaw = 0.f;
+		/** 지난 프레임에 표시한 발 위치 (월드) - 복구 스텝 도중 지시 스텝으로 바뀔 때 이어서 시작 */
+		FVector DisplayLocation = FVector::ZeroVector;
+		bool bRecoveryStepping = false;
+		/** 지시 스텝이 시작될 때의 StepAlpha (늦게 시작하면 남은 구간을 0~1 로 다시 매핑) */
+		float DrivenPhaseStart = 0.f;
+		/** 이번 지시 스텝은 발을 들지 않고 생략 */
+		bool bSkipDrivenStep = false;
 	};
 
 	/** 스텝 진행도에 따른 발 Pitch (도, + = 발끝 위) */

@@ -1,4 +1,4 @@
-// Copyright NeedsGames. All Rights Reserved.
+// Copyright yoomsGames. All Rights Reserved.
 
 /**
  * 에디터 콘솔 명령:  pt.Editor.SetupLocomotionABP [원본 ABP 경로] [대상 ABP 경로]

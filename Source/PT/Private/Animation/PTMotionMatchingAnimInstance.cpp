@@ -1,4 +1,4 @@
-// Copyright NeedsGames. All Rights Reserved.
+// Copyright yoomsGames. All Rights Reserved.
 
 #include "Animation/PTMotionMatchingAnimInstance.h"
 #include "Character/PTCharacter.h"
@@ -7,7 +7,9 @@
 
 #include "Animation/AnimMontage.h"
 #include "Animation/AnimSequenceBase.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 #include "Math/SpringMath.h"
 #include "PoseSearch/MotionMatchingAnimNodeLibrary.h"
@@ -98,6 +100,7 @@ void UPTMotionMatchingAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	LocomotionInput.bIsSprintStopSliding = PTMovementComponent->IsSprintStopSliding();
 
 	UpdateSprintPresentation(DeltaSeconds);
+	UpdateFootIK(DeltaSeconds);
 
 	if (PTMotionMatchingCVars::bDrawTrajectory)
 	{
@@ -333,6 +336,63 @@ void UPTMotionMatchingAnimInstance::UpdateBodyLean(float DeltaSeconds)
 	}
 
 	SpringMath::CriticalSpringDamper(BodyLeanPitch, BodyLeanRate, TargetLean, LeanSmoothingTime, DeltaSeconds);
+}
+
+void UPTMotionMatchingAnimInstance::UpdateFootIK(float DeltaSeconds)
+{
+	USkeletalMeshComponent* MeshComp = GetSkelMeshComponent();
+	UWorld* World = GetWorld();
+	const UCapsuleComponent* Capsule = PTOwnerCharacter ? PTOwnerCharacter->GetCapsuleComponent() : nullptr;
+	if (!MeshComp || !World || !Capsule || !PTMovementComponent || DeltaSeconds <= 0.f)
+	{
+		return;
+	}
+
+	float TargetLeft = 0.f;
+	float TargetRight = 0.f;
+	FVector TargetLeftNormal = FVector::UpVector;
+	FVector TargetRightNormal = FVector::UpVector;
+
+	// 지상에서만 (공중 / 파쿠르 몽타주 중에는 0 으로 서서히 복귀)
+	const bool bActive = bEnableFootIK && PTMovementComponent->IsMovingOnGround() && !LocomotionInput.bIsPlayingRootMotionMontage;
+	if (bActive)
+	{
+		const float FloorZ = Capsule->GetComponentLocation().Z - Capsule->GetScaledCapsuleHalfHeight();
+		const float WalkableZ = PTMovementComponent->GetWalkableFloorZ();
+		FCollisionQueryParams Params(SCENE_QUERY_STAT(PTFootIK), false, PTOwnerCharacter);
+
+		auto TraceFoot = [&](FName BoneName, float& OutOffset, FVector& OutNormal)
+		{
+			if (BoneName.IsNone() || !MeshComp->DoesSocketExist(BoneName))
+			{
+				return;
+			}
+			// 발의 수평 위치에서 캡슐 바닥 위/아래로 바닥 찾기 (높이는 캡슐 기준이라 IK 결과가 다시 반영되지 않음)
+			const FVector FootLocation = MeshComp->GetSocketLocation(BoneName);
+			const FVector Start(FootLocation.X, FootLocation.Y, FloorZ + FootIKTraceUp);
+			const FVector End(FootLocation.X, FootLocation.Y, FloorZ - FootIKTraceDown);
+			FHitResult Hit;
+			if (World->LineTraceSingleByChannel(Hit, Start, End, FootIKTraceChannel, Params) && !Hit.bStartPenetrating && Hit.ImpactNormal.Z >= WalkableZ)
+			{
+				OutOffset = FMath::Clamp(Hit.ImpactPoint.Z - FloorZ, -FootIKMaxPelvisDrop, FootIKMaxFootRaise);
+				OutNormal = Hit.ImpactNormal;
+			}
+		};
+
+		TraceFoot(FootIKLeftBone, TargetLeft, TargetLeftNormal);
+		TraceFoot(FootIKRightBone, TargetRight, TargetRightNormal);
+	}
+
+	// 낮은 쪽 발이 닿도록 골반을 내림 (올리지는 않음)
+	const float TargetPelvis = FMath::Max(FMath::Min3(TargetLeft, TargetRight, 0.f), -FootIKMaxPelvisDrop);
+
+	SpringMath::CriticalSpringDamper(FootIKLeftOffset, FootIKLeftRate, TargetLeft, FootIKSmoothingTime, DeltaSeconds);
+	SpringMath::CriticalSpringDamper(FootIKRightOffset, FootIKRightRate, TargetRight, FootIKSmoothingTime, DeltaSeconds);
+	SpringMath::CriticalSpringDamper(FootIKPelvisOffset, FootIKPelvisRate, TargetPelvis, FootIKPelvisSmoothingTime, DeltaSeconds);
+
+	const float NormalAlpha = (FootIKSmoothingTime > 0.f) ? 1.f - FMath::Exp(-DeltaSeconds / FootIKSmoothingTime) : 1.f;
+	FootIKLeftNormal = FMath::Lerp(FootIKLeftNormal, TargetLeftNormal, NormalAlpha).GetSafeNormal(UE_SMALL_NUMBER, FVector::UpVector);
+	FootIKRightNormal = FMath::Lerp(FootIKRightNormal, TargetRightNormal, NormalAlpha).GetSafeNormal(UE_SMALL_NUMBER, FVector::UpVector);
 }
 
 void UPTMotionMatchingAnimInstance::UpdateSprintPresentation(float DeltaSeconds)

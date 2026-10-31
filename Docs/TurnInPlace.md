@@ -39,7 +39,10 @@ pt.Editor.SetupLocomotionABP
 | TurnStepDuration | 〃 | 0.28초 | 발 하나 스텝 시간 |
 | TurnInPlaceStartDelay | 캐릭터 BP > Character Movement > PT\|TurnInPlace | 0.35초 | 멈춤/착지 후 회전 시작까지 대기 |
 | TurnEngageDelay | AnimBP Class Defaults > PT\|TurnInPlace | 0.35초 | 멈춤/착지 후 발 고정 시작까지 대기 (애니메이션 포즈 안정화) |
-| MaxPlantedDrift / RecoveryStepDuration | 노드 디테일 | 20cm / 0.25초 | 디딘 발이 제자리에서 이만큼 벗어나면 자동 복구 스텝 (다리 꼬임 방지) |
+| MaxPlantedDrift / RecoveryStepDuration | 노드 디테일 | 12cm / 0.25초 | 디딘 발이 제자리에서 이만큼 벗어나면 자동 복구 스텝 (다리 꼬임 방지, 축에서 먼 앞발이 늦게 따라오는 것 방지) |
+| OverlapStepStart | 노드 디테일 | 0.45 | 다른 발 스텝이 이만큼 진행된 뒤부터는 복구 스텝을 겹쳐서 시작 |
+| MinStepDistance | 노드 디테일 | 6cm | 발이 이미 목표 근처면 지시된 스텝을 생략 (복구 스텝 직후 같은 발을 다시 드는 "탭댄스" 방지). 복구 스텝은 몸이 회전을 마칠 위치로 한 번에 이동 |
+| MaxLegExtension | 노드 디테일 | 0.96 | 고정된 발까지 다리를 최대 이 비율까지만 폄 - 더 멀면 발이 살짝 끌려와 무릎이 쭉 펴지지 않음 |
 | StepHeight / PelvisDropOnStep | 노드 디테일 | 5cm / 1cm | 발 드는 높이 / 골반 내려감 |
 | PushOffPitch / SwingToePitch | 노드 디테일 > Foot | 18° / 8° | 발 뗄 때 뒤꿈치 드는 각도(발볼 기준) / 공중에서 발끝 드는 각도 |
 | BallForwardOffset | 〃 | 12cm | 발목~발볼 거리 (뒤꿈치 들 때 회전 중심) |

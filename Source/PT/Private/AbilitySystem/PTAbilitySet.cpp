@@ -1,4 +1,4 @@
-// Copyright NeedsGames. All Rights Reserved.
+// Copyright yoomsGames. All Rights Reserved.
 
 #include "AbilitySystem/PTAbilitySet.h"
 #include "AbilitySystem/PTAbilitySystemComponent.h"

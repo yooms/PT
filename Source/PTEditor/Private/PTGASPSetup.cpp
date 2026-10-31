@@ -1,4 +1,4 @@
-// Copyright NeedsGames. All Rights Reserved.
+// Copyright yoomsGames. All Rights Reserved.
 
 /**
  * 에디터 콘솔 명령:  pt.Editor.SetupGASP [rebuild]
@@ -15,6 +15,7 @@
  */
 
 #include "AnimGraphNode_PTAimOffset.h"
+#include "AnimGraphNode_PTFootIK.h"
 #include "AnimGraphNode_PTTurnInPlace.h"
 #include "Animation/PTLocomotionDatabaseSet.h"
 #include "Animation/PTMotionMatchingAnimInstance.h"
@@ -531,6 +532,35 @@ namespace PTGASPSetup
 					return false;
 				}
 			}
+		}
+
+		// 발 IK: Turn In Place 와 Aim Offset 사이에 삽입 (기존 AnimBP 에도 추가)
+		UAnimGraphNode_PTFootIK* FootIKNode = FindFirstNode<UAnimGraphNode_PTFootIK>(AnimGraph);
+		if (!FootIKNode && TurnNode && AimNode)
+		{
+			UEdGraphPin* TurnOut = FindPosePin(TurnNode, EGPD_Output, true);
+			UEdGraphPin* AimIn = FindPosePin(AimNode, EGPD_Input, true);
+			if (TurnOut && AimIn)
+			{
+				TurnOut->BreakAllPinLinks();
+				AimIn->BreakAllPinLinks();
+				FootIKNode = SpawnNode<UAnimGraphNode_PTFootIK>(AnimGraph, (TurnNode->NodePosX + AimNode->NodePosX) / 2, TurnNode->NodePosY + 350);
+				UEdGraphPin* FootIn = FindPosePin(FootIKNode, EGPD_Input, true);
+				UEdGraphPin* FootOut = FindPosePin(FootIKNode, EGPD_Output, true);
+				if (!FootIn || !FootOut || !Schema->TryCreateConnection(TurnOut, FootIn) || !Schema->TryCreateConnection(FootOut, AimIn))
+				{
+					UE_LOG(LogPTGASP, Error, TEXT("Failed to insert PT Foot IK"));
+					return false;
+				}
+			}
+		}
+		if (FootIKNode)
+		{
+			BindVariable(AnimGraph, FootIKNode, GET_MEMBER_NAME_CHECKED(FAnimNode_PTFootIK, LeftFootOffset), TEXT("FootIKLeftOffset"));
+			BindVariable(AnimGraph, FootIKNode, GET_MEMBER_NAME_CHECKED(FAnimNode_PTFootIK, RightFootOffset), TEXT("FootIKRightOffset"));
+			BindVariable(AnimGraph, FootIKNode, GET_MEMBER_NAME_CHECKED(FAnimNode_PTFootIK, PelvisOffset), TEXT("FootIKPelvisOffset"));
+			BindVariable(AnimGraph, FootIKNode, GET_MEMBER_NAME_CHECKED(FAnimNode_PTFootIK, LeftFootNormal), TEXT("FootIKLeftNormal"));
+			BindVariable(AnimGraph, FootIKNode, GET_MEMBER_NAME_CHECKED(FAnimNode_PTFootIK, RightFootNormal), TEXT("FootIKRightNormal"));
 		}
 
 		// Motion Matching: 데이터베이스는 C++ 이 매 프레임 지정, 블렌드 시간은 변수

@@ -1,4 +1,4 @@
-// Copyright NeedsGames. All Rights Reserved.
+// Copyright yoomsGames. All Rights Reserved.
 
 #include "AbilitySystem/Abilities/PTGameplayAbility_Sprint.h"
 #include "AbilitySystem/Attributes/PTStaminaSet.h"

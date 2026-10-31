@@ -1,4 +1,4 @@
-// Copyright NeedsGames. All Rights Reserved.
+// Copyright yoomsGames. All Rights Reserved.
 
 #pragma once
 
@@ -64,6 +64,12 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "PT|Character")
 	EPTGait GetGait() const;
+
+	/**
+	 * 파쿠르 중 카메라 처리 (로컬). 캡슐이 장애물을 통과하는 동안 스프링암 충돌 검사의 시작점이 장애물 안에 들어가
+	 * 카메라가 몸 안으로 당겨지는 것을 막기 위해 충돌 검사를 끄고, 끝나면 원래대로 복구
+	 */
+	void SetTraversalCameraMode(bool bTraversing);
 
 	UFUNCTION(BlueprintPure, Category = "PT|Character")
 	EPTStance GetStance() const;
@@ -132,6 +138,14 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PT|Camera", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCameraComponent> FollowCamera;
+
+	/** 파쿠르 중 카메라 따라가기 속도 (스프링암 Camera Lag Speed) - 빠른 루트 모션에도 부드럽게 */
+	UPROPERTY(EditDefaultsOnly, Category = "PT|Camera", meta = (ClampMin = "0"))
+	float TraversalCameraLagSpeed = 8.f;
+
+	bool bTraversalCameraActive = false;
+	bool bSavedCameraCollisionTest = true;
+	float SavedCameraLagSpeed = 0.f;
 
 	/** 파쿠르 몽타주의 모션 워핑 (FrontLedge / BackLedge / BackFloor) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PT|Traversal", meta = (AllowPrivateAccess = "true"))
